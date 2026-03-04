@@ -34,6 +34,22 @@ class DataPipeline:
         df = self._load()
         return self._split_and_scale(df)
 
+    def build_cleaned(self, threshold: float = 2.0) -> ProcessedDataset:
+        """
+        Cria um dataset com outliers removidos (ex: fora de 2 desvios padrão).
+        Remove aproximadamente os 5% mais extremos para permitir melhor aprendizado.
+        """
+        df = self._load()
+        features = df[list(self.config.feature_columns)]
+        
+        # Filtro de outliers via Z-Score (Desvio Padrão)
+        z_scores = np.abs((features - features.mean()) / features.std())
+        # Mantém apenas linhas onde NENHUMA feature é outlier
+        filtered_df = df[(z_scores < threshold).all(axis=1)].copy()
+        
+        print(f"[Data] Outlier removal: {len(df)} -> {len(filtered_df)} samples")
+        return self._split_and_scale(filtered_df)
+
     # ------------------------------------------------------------------
     # Privado
     # ------------------------------------------------------------------

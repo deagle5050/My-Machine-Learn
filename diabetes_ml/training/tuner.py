@@ -64,6 +64,16 @@ class HyperparameterTuner:
         dict[str, EarlyStoppingState]
             Estados finais de cada modelo (inclui best_param e best_acc).
         """
+        # Valida min_delta antes de gastar tempo de GPU
+        n_total = (
+            self.dataset.features_train.shape[0]
+            + self.dataset.features_test.shape[0]
+        )
+        test_size = self.dataset.features_test.shape[0] / n_total
+        EarlyStopping.validate_against_dataset(
+            self.config.min_delta, n_total, test_size
+        )
+
         print("Iniciando treinamento na GPU (NVIDIA CUDA) com Early Stopping...")
         param = self.config.initial_param
 
@@ -89,6 +99,12 @@ class HyperparameterTuner:
             param += 1
 
         print("\nBusca concluída por Early Stopping!")
+        print("-" * 40)
+        print(f"{'Modelo':<15} | {'Melhor Acc':<10} | {'Melhor Parâmetro':<15}")
+        print("-" * 40)
+        for name, state in self.states.items():
+            print(f"{name:<15} | {state.best_acc:<10.4f} | {state.best_param:<15}")
+        print("-" * 40)
         return self.states
 
     def _evaluate(self, wrapper: GPUModelWrapper, param: int) -> float | None:
@@ -120,4 +136,4 @@ class HyperparameterTuner:
                 parts.append(
                     f"{wrapper.name} Parado (Melhor: {state.best_acc:.4f})"
                 )
-        print(" | ".join(parts))
+        print(" | ".join(parts))        

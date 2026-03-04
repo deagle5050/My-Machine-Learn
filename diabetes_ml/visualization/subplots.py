@@ -62,11 +62,6 @@ class ModelSubplotBuilder:
     de set_data — todo o rendering subsequente ocorre na GPU.
     """
 
-    _BG_ALPHA = 0.045  # transparência da fronteira de decisão
-    _BG_SIZE  = 4.5    # tamanho dos pontos de background (px)
-    _PT_SIZE  = 8.0    # tamanho dos pontos de dados (px)
-    _ERR_SIZE = 9.5    # tamanho dos pontos de erro (px)
-
     def __init__(
         self,
         train_row: GPUScatterRow,
@@ -76,8 +71,60 @@ class ModelSubplotBuilder:
         self.train_row = train_row
         self.test_row  = test_row
         self.dataset   = dataset
+        
+        # Parâmetros de renderização dinâmicos
+        self.bg_alpha = 0.4
+        self.bg_size  = 12.0
+        self.pt_size  = 7.0
+        self.err_size = 8.5
+        
+        # Guardamos as referências para atualizações dinâmicas
+        self._all_views: list[ScatterViewState] = []
 
     # ── Público ───────────────────────────────────────────────────────────────
+
+    def update_render_params(
+        self,
+        bg_alpha: float | None = None,
+        bg_size:  float | None = None,
+        pt_size:  float | None = None,
+        err_size: float | None = None,
+    ) -> None:
+        """Atualiza os parâmetros e reaplica aos marcadores existentes."""
+        if bg_alpha is not None: self.bg_alpha = bg_alpha
+        if bg_size  is not None: self.bg_size  = bg_size
+        if pt_size  is not None: self.pt_size  = pt_size
+        if err_size is not None: self.err_size = err_size
+
+        for sv in self._all_views:
+            if sv.bg_markers and sv.bg_pos.size > 0:
+                bg_colors = _label_colors(sv.bg_preds, 'class', self.bg_alpha)
+                sv.bg_markers.set_data(
+                    pos=sv.bg_pos,
+                    face_color=bg_colors,
+                    size=self.bg_size,
+                    edge_width=0
+                )
+            if sv.pt_markers and sv.pt_pos.size > 0:
+                pt_colors = (
+                    _label_colors(sv.pt_preds, 'class')
+                    if sv.dataset_type == 'train'
+                    else _mixed_colors(sv.pt_preds, sv.pred_ref)
+                )
+                sv.pt_markers.set_data(
+                    pos=sv.pt_pos,
+                    face_color=pt_colors,
+                    size=self.pt_size,
+                    edge_width=0
+                )
+            if sv.err_markers and sv.err_pos.size > 0:
+                err_colors = _label_colors(sv.err_preds, 'error')
+                sv.err_markers.set_data(
+                    pos=sv.err_pos,
+                    face_color=err_colors,
+                    size=self.err_size,
+                    edge_width=0
+                )
 
     def build(
         self,
@@ -93,6 +140,9 @@ class ModelSubplotBuilder:
 
         self._fill(sv_train, model_name, 'train', grid_pos, grid_preds, pred_train)
         self._fill(sv_test,  model_name, 'test',  grid_pos, grid_preds, pred_test)
+        
+        if sv_train not in self._all_views: self._all_views.append(sv_train)
+        if sv_test  not in self._all_views: self._all_views.append(sv_test)
 
         return sv_train, sv_test
 
@@ -122,9 +172,20 @@ class ModelSubplotBuilder:
         error_mask       = targets != predictions
         sv.error_indices = np.where(error_mask)[0]
 
-        # 1. Background: fronteira de decisão (muito transparente)
-        bg_colors = _label_colors(grid_preds, 'class', self._BG_ALPHA)
-        sv.bg_markers = self._markers(sv.view, grid_pos, bg_colors, self._BG_SIZE)
+        # Salva dados para atualizações
+        sv.bg_pos   = grid_pos.astype(np.float32)
+        sv.bg_preds = grid_preds
+        sv.pt_pos   = features.astype(np.float32)
+        sv.pt_preds = targets
+        
+        err_feats  = features[error_mask]
+        err_targets = targets[error_mask]
+        sv.err_pos   = err_feats.astype(np.float32)
+        sv.err_preds = err_targets
+
+        # 1. Background: fronteira de decisão (névoa)
+        bg_colors = _label_colors(grid_preds, 'class', self.bg_alpha)
+        sv.bg_markers = self._markers(sv.view, grid_pos, bg_colors, self.bg_size)
 
         # 2. Pontos padrão
         pt_colors = (
@@ -132,13 +193,12 @@ class ModelSubplotBuilder:
             if is_train
             else _mixed_colors(targets, predictions)
         )
-        sv.pt_markers = self._markers(sv.view, features, pt_colors, self._PT_SIZE)
+        sv.pt_markers = self._markers(sv.view, features, pt_colors, self.pt_size)
 
         # 3. Pontos de erro (ocultos por padrão)
-        err_feats  = features[error_mask]
-        err_colors = _label_colors(targets[error_mask], 'error')
+        err_colors = _label_colors(err_targets, 'error')
         sv.err_markers = self._markers(
-            sv.view, err_feats, err_colors, self._ERR_SIZE, visible=False
+            sv.view, err_feats, err_colors, self.err_size, visible=False
         )
 
     @staticmethod

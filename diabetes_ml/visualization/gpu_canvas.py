@@ -60,6 +60,14 @@ class ScatterViewState:
     pt_markers:  Any = field(default=None)   # modo padrão
     err_markers: Any = field(default=None)   # modo de erros
 
+    # Referências aos dados de posicionamento e cores (para atualizações dinâmicas)
+    bg_pos:   np.ndarray = field(default_factory=lambda: np.array([]))
+    bg_preds: np.ndarray = field(default_factory=lambda: np.array([]))
+    pt_pos:   np.ndarray = field(default_factory=lambda: np.array([]))
+    pt_preds: np.ndarray = field(default_factory=lambda: np.array([]))
+    err_pos:  np.ndarray = field(default_factory=lambda: np.array([]))
+    err_preds: np.ndarray = field(default_factory=lambda: np.array([]))
+
     # Referências aos dados originais (para tooltip)
     feat_raw_ref: Any = field(default=None)  # DataFrame com features não escalonadas
     target_ref:   Any = field(default=None)  # np.ndarray de targets
@@ -67,16 +75,21 @@ class ScatterViewState:
 
     # ── Controle de modo ──────────────────────────────────────────────────────
 
-    def set_diff_mode(self, active: bool) -> None:
+    def set_diff_mode(self, active: bool, fog_enabled: bool = True) -> None:
         """Alterna entre visualização padrão e modo de erros."""
         _toggle = {
-            self.bg_markers:  not active,   # visível no modo padrão
+            self.bg_markers:  (not active) and fog_enabled,
             self.pt_markers:  not active,
-            self.err_markers: active,       # visível no modo de erros
+            self.err_markers: active,
         }
         for vis, should_show in _toggle.items():
             if vis is not None:
                 vis.visible = should_show
+
+    def set_fog_visible(self, visible: bool) -> None:
+        """Controla apenas a visibilidade da névoa (background)."""
+        if self.bg_markers is not None:
+            self.bg_markers.visible = visible
 
 
 # ── Canvas de uma linha de gráficos ──────────────────────────────────────────
@@ -94,7 +107,7 @@ class GPUScatterRow:
         Número de ViewBoxes (= número de modelos).
     camera : scene.cameras.TurntableCamera
         Câmera compartilhada. Todas as views usam esta referência.
-    size : tuple[int, int]
+    size : tuple[int, int] = (1400, 340)
         Tamanho inicial do canvas em pixels (largura, altura).
     """
 
@@ -123,9 +136,14 @@ class GPUScatterRow:
 
     # ── Público ───────────────────────────────────────────────────────────────
 
-    def set_diff_mode(self, active: bool) -> None:
+    def set_diff_mode(self, active: bool, fog_enabled: bool = True) -> None:
         for sv in self.views:
-            sv.set_diff_mode(active)
+            sv.set_diff_mode(active, fog_enabled)
+        self.canvas.update()
+
+    def set_fog_visible(self, visible: bool) -> None:
+        for sv in self.views:
+            sv.set_fog_visible(visible)
         self.canvas.update()
 
     @property

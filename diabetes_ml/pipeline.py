@@ -67,13 +67,15 @@ class DiabetesMLPipeline:
     def run(self) -> None:
         """Executa o pipeline completo e abre a janela de visualização."""
 
-        # 1. Dados
-        dataset = DataPipeline(self.config).build()
+        # 1. Dados (Original e Limpo)
+        dp = DataPipeline(self.config)
+        dataset_orig = dp.build()
+        dataset_cln  = dp.build_cleaned()
 
-        # 2. Busca de hiperparâmetros com Early Stopping
+        # 2. Busca de hiperparâmetros com Early Stopping (no original)
         wrappers = self._default_wrappers()
-        states   = HyperparameterTuner(wrappers, dataset, self.config).run()
-        best_models = self._build_best_models(wrappers, states)
+        states   = HyperparameterTuner(wrappers, dataset_orig, self.config).run()
+        best_models_orig = self._build_best_models(wrappers, states)
 
         # 3. Grade de fronteira de decisão
         grid     = DecisionBoundaryGrid(self.config)
@@ -81,39 +83,66 @@ class DiabetesMLPipeline:
             grid.flat_insulin, grid.flat_glucose, grid.flat_bmi
         )).astype(np.float32)
 
-        # 4. Câmera compartilhada — única instância = sincronização perfeita
+        # 4. Câmera compartilhada
         shared_camera = scene.cameras.TurntableCamera(
             fov=40.0, elevation=25.0, azimuth=45.0, distance=4.5
         )
 
-        n_models  = len(best_models)
+        n_models  = len(best_models_orig)
         train_row = GPUScatterRow(n_models, shared_camera)
         test_row  = GPUScatterRow(n_models, shared_camera)
+        clean_row = GPUScatterRow(n_models, shared_camera)
 
-        # 5. Construção dos scatter plots (envia dados para a VRAM via OpenGL)
-        builder     = ModelSubplotBuilder(train_row, test_row, dataset)
+        # 5. Construção dos scatter plots
+        builder     = ModelSubplotBuilder(train_row, test_row, dataset_orig)
+        # Builder para a linha limpa (usa um dataset diferente)
+        builder_cln = ModelSubplotBuilder(clean_row, clean_row, dataset_cln)
+        
         all_views:  list[ScatterViewState] = []
         model_names: list[str] = []
-        accs_train:  list[float] = []
-        accs_test:   list[float] = []
+        acc_trains:  list[float] = []
+        acc_tests:   list[float] = []
+        acc_cleans:  list[float] = []
 
-        for col, (model_name, model) in enumerate(best_models.items()):
-            model.fit(dataset.X_train_gpu, dataset.y_train_gpu)
+        for col, (model_name, model_orig) in enumerate(best_models_orig.items()):
+            # Recupera o wrapper e o parâmetro otimizado
+            base_name = model_name.split(" (")[0]
+            wrapper = next(w for w in wrappers if w.name == base_name)
+            best_p = states[base_name].best_param
+            
+            # ── 1. Fluxo Original (Train & Test) ──────────────────────────
+            model_orig.fit(dataset_orig.X_train_gpu, dataset_orig.y_train_gpu)
+            pred_train_orig = cp.asnumpy(model_orig.predict(dataset_orig.X_train_gpu)).astype(np.int32)
+            pred_test_orig  = cp.asnumpy(model_orig.predict(dataset_orig.X_test_gpu)).astype(np.int32)
+            grid_preds_orig = cp.asnumpy(model_orig.predict(grid.X_grid_gpu)).astype(np.int32)
 
-            pred_train = cp.asnumpy(model.predict(dataset.X_train_gpu)).astype(np.int32)
-            pred_test  = cp.asnumpy(model.predict(dataset.X_test_gpu)).astype(np.int32)
-            grid_preds = cp.asnumpy(model.predict(grid.X_grid_gpu)).astype(np.int32)
-
-            acc_train = float(np.mean(pred_train == dataset.target_train))
-            acc_test  = float(np.mean(pred_test  == dataset.target_test))
+            acc_train = float(np.mean(pred_train_orig == dataset_orig.target_train))
+            acc_test  = float(np.mean(pred_test_orig  == dataset_orig.target_test))
 
             sv_train, sv_test = builder.build(
-                col, model_name, grid_pos, grid_preds, pred_train, pred_test
+                col, model_name, grid_pos, grid_preds_orig, pred_train_orig, pred_test_orig
             )
-            all_views.extend([sv_train, sv_test])
+            
+            # ── 2. Fluxo Dados Limpos (Instancia novo modelo) ──────────────
+            model_cln = wrapper.build(best_p)
+            model_cln.fit(dataset_cln.X_train_gpu, dataset_cln.y_train_gpu)
+            
+            pred_test_cln  = cp.asnumpy(model_cln.predict(dataset_cln.X_test_gpu)).astype(np.int32)
+            grid_preds_cln = cp.asnumpy(model_cln.predict(grid.X_grid_gpu)).astype(np.int32)
+            
+            acc_cln = float(np.mean(pred_test_cln == dataset_cln.target_test))
+            
+            # Populamos apenas a visão de teste da clean_row (evitando duplicidade)
+            sv_clean = clean_row.views[col]
+            builder_cln._fill(sv_clean, model_name, 'test', grid_pos, grid_preds_cln, pred_test_cln)
+            if sv_clean not in builder_cln._all_views:
+                builder_cln._all_views.append(sv_clean)
+
+            all_views.extend([sv_train, sv_test, sv_clean])
             model_names.append(model_name)
-            accs_train.append(acc_train)
-            accs_test.append(acc_test)
+            acc_trains.append(acc_train)
+            acc_tests.append(acc_test)
+            acc_cleans.append(acc_cln)
 
         # 6. Qt Application + janela principal
         qt_app = QApplication.instance() or QApplication(sys.argv)
@@ -121,13 +150,16 @@ class DiabetesMLPipeline:
         window = DiabetesMLWindow(
             train_row     = train_row,
             test_row      = test_row,
+            clean_row     = clean_row,
             all_views     = all_views,
-            dataset       = dataset,
+            dataset       = dataset_orig,
             tuning_states = states,
             min_delta     = self.config.min_delta,
+            builders      = [builder, builder_cln],
             model_names   = model_names,
-            acc_train     = accs_train,
-            acc_test      = accs_test,
+            acc_train     = acc_trains,
+            acc_test      = acc_tests,
+            acc_clean     = acc_cleans,
         )
         window.show()
         qt_app.exec()
@@ -148,3 +180,4 @@ class DiabetesMLPipeline:
             f"{name} (param={state.best_param})": mapping[name].build(state.best_param)
             for name, state in states.items()
         }
+

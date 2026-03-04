@@ -13,6 +13,7 @@ EarlyStopping
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 
 
@@ -40,11 +41,84 @@ class EarlyStopping:
         Melhoria mínima considerada significativa.
         Se a diferença ``acc - best_acc <= min_delta``, o passo é
         tratado como estagnação e a paciência é incrementada.
+
+    ⚠️  ATENÇÃO — relação crítica com o tamanho do conjunto de teste
+    ──────────────────────────────────────────────────────────────────
+    A menor melhoria possível na acurácia é:
+
+        resolução_mínima = 1 / n_amostras_teste
+
+    Se min_delta ≥ resolução_mínima, nenhuma melhoria real conseguirá
+    zerar a paciência e todos os modelos pararão após exatamente
+    patience_limit steps. Use validate_against_dataset() logo após
+    instanciar para detectar esse erro antes do treinamento começar.
     """
 
-    def __init__(self, patience_limit: int, min_delta: float = 0.01) -> None:
+    def __init__(self, patience_limit: int, min_delta: float = 0.001) -> None:
         self.patience_limit = patience_limit
         self.min_delta = min_delta
+
+    # ------------------------------------------------------------------
+    # Validação preventiva
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def validate_against_dataset(
+        cls,
+        min_delta: float,
+        n_total: int,
+        test_size: float,
+    ) -> None:
+        """
+        Verifica se min_delta é compatível com o tamanho do conjunto de teste.
+
+        A menor melhoria possível na acurácia é 1/n_teste.
+        Se min_delta >= 1/n_teste, a paciência nunca zerará e todos os
+        modelos pararão após exatamente patience_limit steps.
+
+        Parameters
+        ----------
+        min_delta : float  valor configurado em PipelineConfig
+        n_total   : int    total de amostras no dataset
+        test_size : float  fração de teste (ex: 0.3)
+
+        Raises
+        ------
+        ValueError  se min_delta impossibilitar qualquer detecção de melhoria.
+        """
+        n_test = int(n_total * test_size)
+        if n_test == 0:
+            return
+
+        resolution = 1.0 / n_test
+
+        if min_delta >= resolution:
+            raise ValueError(
+                f"\n\n[EarlyStopping] Configuração INVÁLIDA detectada!\n"
+                f"{'─' * 60}\n"
+                f"  min_delta configurado : {min_delta:.6f}\n"
+                f"  resolução mínima      : 1/{n_test} = {resolution:.6f}\n"
+                f"  (dataset={n_total} amostras × test_size={test_size})\n\n"
+                f"  PROBLEMA: min_delta >= resolução_mínima\n"
+                f"  A acurácia nunca melhorará o suficiente para zerar\n"
+                f"  a paciência. Todos os modelos pararão em:\n"
+                f"    initial_param + patience_limit (sem exploração real).\n\n"
+                f"{'─' * 60}\n"
+                f"  ✅ Corrija definindo  min_delta < {resolution:.6f}\n"
+                f"  ✅ Valor sugerido   : min_delta = {resolution / 3:.6f}\n"
+            )
+
+        if min_delta > resolution * 0.5:
+            warnings.warn(
+                f"[EarlyStopping] min_delta={min_delta:.6f} está acima de 50% da "
+                f"resolução mínima ({resolution:.6f}). A busca pode perder melhorias "
+                f"reais de apenas 1–2 amostras. Considere reduzir min_delta.",
+                stacklevel=3,
+            )
+
+    # ------------------------------------------------------------------
+    # Lógica de stepping
+    # ------------------------------------------------------------------
 
     def step(self, state: EarlyStoppingState, acc: float, param: int) -> None:
         """Registra o resultado do step e atualiza o estado."""

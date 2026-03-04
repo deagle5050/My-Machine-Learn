@@ -42,7 +42,7 @@ class TuningPlotBuilder:
             )
             ax.text(
                 state.best_param, state.best_acc + 0.01,
-                f"Melhor {key}", color=color, ha="center",
+                f"Best {key}", color=color, ha="center",
             )
 
         max_p = max(
@@ -51,11 +51,11 @@ class TuningPlotBuilder:
         step = max(1, max_p // 20)
         ax.set_xticks(range(1, max_p + step, step))
         ax.set_title(
-            f"Fine Tuning NVIDIA GPU — Acurácia vs Parâmetro "
+            f"NVIDIA GPU Fine Tuning — Accuracy vs Parameter "
             f"(Early Stopping | min_delta={min_delta})",
             fontsize=12,
         )
-        ax.set_xlabel("Valor do Parâmetro (K / N Estimators)")
-        ax.set_ylabel("Acurácia de Teste")
+        ax.set_xlabel("Parameter Value (K / N Estimators)")
+        ax.set_ylabel("Test Accuracy")
         ax.legend(loc="lower right")
         ax.grid(True, linestyle=":", alpha=0.7)
