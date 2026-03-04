@@ -242,7 +242,7 @@ wheels = [
 ]
 
 [[package]]
-name = "idp-machine-learn"
+name = "my-machine-learn"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

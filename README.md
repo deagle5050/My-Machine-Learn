@@ -2,10 +2,10 @@
 
 # My Machine Learn
 
-![License](https://img.shields.io/github/license/Ashu11-A/IDP-Machine-Learn?style=for-the-badge&color=302D41&labelColor=f9e2af&logoColor=302D41)
-![Stars](https://img.shields.io/github/stars/Ashu11-A/IDP-Machine-Learn?style=for-the-badge&color=302D41&labelColor=f9e2af&logoColor=302D41)
-![Last Commit](https://img.shields.io/github/last-commit/Ashu11-A/IDP-Machine-Learn?style=for-the-badge&color=302D41&labelColor=b4befe&logoColor=302D41)
-![Repo Size](https://img.shields.io/github/repo-size/Ashu11-A/IDP-Machine-Learn?style=for-the-badge&color=302D41&labelColor=90dceb&logoColor=302D41)
+![License](https://img.shields.io/github/license/Ashu11-A/My-Machine-Learn?style=for-the-badge&color=302D41&labelColor=f9e2af&logoColor=302D41)
+![Stars](https://img.shields.io/github/stars/Ashu11-A/My-Machine-Learn?style=for-the-badge&color=302D41&labelColor=f9e2af&logoColor=302D41)
+![Last Commit](https://img.shields.io/github/last-commit/Ashu11-A/My-Machine-Learn?style=for-the-badge&color=302D41&labelColor=b4befe&logoColor=302D41)
+![Repo Size](https://img.shields.io/github/repo-size/Ashu11-A/My-Machine-Learn?style=for-the-badge&color=302D41&labelColor=90dceb&logoColor=302D41)
 
 <br>
 
@@ -14,8 +14,7 @@
   <br><br>
   <sub>
     Training of multiple classifiers with <strong>Early Stopping</strong>,
-    interactive 3D visualization rendered on the GPU via <strong>OpenGL (vispy)</strong>,
-    and real-time camera synchronization across all plots.
+    interactive 3D visualization rendered on the GPU via <strong>OpenGL (vispy)</strong>
   </sub>
 </p>
 
@@ -25,7 +24,7 @@
 
 <br><br>
 
-<a href="https://github.com/Ashu11-A/IDP-Machine-Learn/stargazers">
+<a href="https://github.com/Ashu11-A/My-Machine-Learn/stargazers">
   <img src="https://img.shields.io/badge/Leave%20a%20Star%20🌟-302D41?style=for-the-badge&color=302D41&labelColor=302D41" alt="Star Repo">
 </a>
 
@@ -79,7 +78,7 @@ The project follows a layered architecture with a clear separation of responsibi
 
 ```
 
-IDP-Machine-Learn/
+My-Machine-Learn/
 │
 ├── main.py                  ← single entry point
 │
@@ -226,15 +225,6 @@ The visualization was reimplemented from **matplotlib 3D (CPU)** to **vispy Open
 | Data buffer | Recalculated every frame | Sent once to VRAM |
 | Synchronization | Event callbacks | Shared camera object |
 
-**Camera synchronization:** all 6 ViewBoxes (3 models × 2 splits) share the **same** `TurntableCamera` instance. Rotating any plot instantly rotates all of them — with no event overhead, by Python reference.
-
-```python
-shared_camera = TurntableCamera(fov=40, elevation=25, azimuth=45)
-train_row = GPUScatterRow(n_models, shared_camera)   # ← same camera
-test_row  = GPUScatterRow(n_models, shared_camera)   # ← same camera
-
-```
-
 **Color legend:**
 
 | Color | Meaning |
@@ -248,7 +238,7 @@ test_row  = GPUScatterRow(n_models, shared_camera)   # ← same camera
 
 ## 📦 Requirements
 
-* Python `>= 3.11`
+* UV (package and project manager)
 * NVIDIA GPU with CUDA support `>= 11.8`
 * CUDA Toolkit installed on the system
 
@@ -271,29 +261,19 @@ test_row  = GPUScatterRow(n_models, shared_camera)   # ← same camera
 
 ```bash
 # 1. Clone the repository
-git clone [https://github.com/Ashu11-A/IDP-Machine-Learn.git](https://github.com/Ashu11-A/IDP-Machine-Learn.git)
-cd IDP-Machine-Learn
+git clone https://github.com/Ashu11-A/My-Machine-Learn.git
+cd My-Machine-Learn
 
 # 2. Place the dataset in the project root
 #    Download at: https://www.kaggle.com/datasets/johndasilva/diabetes
 
-# 3. Install dependencies (recommended: uv)
+# 3. Install dependencies
 uv sync
 
 # 4. Run
 uv run main.py
-# or:
-python main.py
 
 ```
-
-> **Note:** `cuml` requires [RAPIDS](https://rapids.ai/start/) installed. The simplest way is via `conda`:
-> ```bash
-> conda install -c rapidsai -c conda-forge cuml cuda-version=12.0
-> 
-> ```
-> 
-> 
 
 To customize the search parameters without modifying the code:
 
@@ -309,39 +289,3 @@ cfg = PipelineConfig(
 DiabetesMLPipeline(cfg).run()
 
 ```
-
----
-
-## 📁 Project Structure
-
-```
-IDP-Machine-Learn/
-├── main.py
-├── diabetes.csv               ← dataset (not included, download from Kaggle)
-├── STRUCTURE.md
-├── pyproject.toml
-├── uv.lock
-└── diabetes_ml/
-    ├── __init__.py
-    ├── config.py
-    ├── pipeline.py
-    ├── data/
-    │   ├── __init__.py
-    │   ├── dataset.py
-    │   └── pipeline.py
-    ├── training/
-    │   ├── __init__.py
-    │   ├── early_stopping.py
-    │   ├── wrappers.py
-    │   └── tuner.py
-    └── visualization/
-        ├── __init__.py
-        ├── gpu_canvas.py
-        ├── grid.py
-        ├── subplots.py
-        ├── tuning_plot.py
-        └── interaction.py
-
-```
-
-

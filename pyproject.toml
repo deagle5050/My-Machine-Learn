@@ -1,5 +1,5 @@
 [project]
-name = "idp-machine-learn"
+name = "my-machine-learn"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
