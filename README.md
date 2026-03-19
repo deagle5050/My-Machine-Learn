@@ -43,7 +43,6 @@
 - [3D GPU Visualization](#-3d-gpu-visualization)
 - [Requirements](#-requirements)
 - [Installation and Execution](#-installation-and-execution)
-- [Project Structure](#-project-structure)
 
 ---
 
@@ -287,5 +286,6 @@ cfg = PipelineConfig(
     initial_param=10,
 )
 DiabetesMLPipeline(cfg).run()
+
 
 ```
